@@ -32,7 +32,15 @@ function resolveHermesHome(config: Record<string, unknown>): string {
       : {};
   const configuredHome = asString(env.HOME);
   const hermesHome = asString(env.HERMES_HOME);
-  return hermesHome ? path.resolve(hermesHome) : path.join(configuredHome ? path.resolve(configuredHome) : os.homedir(), ".hermes");
+  // Operator default (PAPERCLIP_HERMES_LOCAL_DEFAULT_HOME) keeps agents
+  // without an explicit home off the operator's personal ~/.hermes, whose
+  // hand-installed skills collide with Paperclip-managed skills.
+  const operatorDefaultHome = asString(process.env.PAPERCLIP_HERMES_LOCAL_DEFAULT_HOME);
+  return hermesHome
+    ? path.resolve(hermesHome)
+    : operatorDefaultHome
+      ? path.resolve(operatorDefaultHome)
+      : path.join(configuredHome ? path.resolve(configuredHome) : os.homedir(), ".hermes");
 }
 
 interface SkillFrontmatter {

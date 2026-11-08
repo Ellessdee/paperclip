@@ -518,7 +518,7 @@ export async function execute(
   const childHermesHome =
     typeof (config.env as Record<string, unknown> | undefined)?.HERMES_HOME === "string"
       ? ((config.env as Record<string, unknown>).HERMES_HOME as string)
-      : undefined;
+      : (process.env.PAPERCLIP_HERMES_LOCAL_DEFAULT_HOME ?? undefined);
   const usageBefore = sessionId ? readSessionUsage(sessionId, findLedgerForSession(sessionId, childHermesHome)) : null;
   // A resumed run whose starting total is unknown must not charge the whole
   // session: report no usage for it at all.
@@ -583,6 +583,16 @@ export async function execute(
     ...buildPaperclipEnv(ctx.agent, ctx.agentIdentity),
     ...buildRuntimeToolsEnv(ctx.runtimeTools),
   };
+
+  // Operators can point hermes_local agents without an explicit HERMES_HOME
+  // at a shared, Paperclip-dedicated Hermes profile via
+  // PAPERCLIP_HERMES_LOCAL_DEFAULT_HOME. Without this the child inherits the
+  // operator's personal ~/.hermes, whose hand-installed skills collide with
+  // Paperclip-managed skills (hard failure at run start). An explicit
+  // per-agent HERMES_HOME always wins over the operator default.
+  if (!env.HERMES_HOME && process.env.PAPERCLIP_HERMES_LOCAL_DEFAULT_HOME) {
+    env.HERMES_HOME = process.env.PAPERCLIP_HERMES_LOCAL_DEFAULT_HOME;
+  }
 
   // Scope the overlay to this child process. Read the current bundle on every
   // invocation; never infer its availability from a persisted session ID.
